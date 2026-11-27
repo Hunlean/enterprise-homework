@@ -5,7 +5,7 @@ const shop = require('./shop');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const API = `https://api.telegram.org/bot${TOKEN}`;
-const SHOP = process.env.SHOP_NAME || 'Mekong Phone Shop';
+const SHOP = process.env.SHOP_NAME || 'XCYZ Phone Shop';
 const SITE = process.env.SITE_URL || 'http://localhost:3000';
 
 let botUsername = null;

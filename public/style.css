@@ -6,7 +6,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
 a { color: var(--brand); }
-header { background: #0b1b33; color: #fff; position: sticky; top: 0; z-index: 10; }
+header { background: #0b0b0f; color: #fff; position: sticky; top: 0; z-index: 10; }
 .bar { max-width: 1100px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
 .logo { font-weight: 800; font-size: 20px; color: #fff; text-decoration: none; }
 .spacer { flex: 1; }
@@ -16,7 +16,7 @@ header { background: #0b1b33; color: #fff; position: sticky; top: 0; z-index: 10
 .btn-ghost { background: transparent; color: inherit; border: 1px solid var(--line); }
 header .btn-ghost { border-color: #ffffff44; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.hero { background: linear-gradient(135deg, #0b1b33, #0f62fe); color: #fff; }
+.hero { background: linear-gradient(135deg, #0b0b0f 30%, #0f62fe); color: #fff; }
 .hero .inner { max-width: 1100px; margin: 0 auto; padding: 40px 16px; }
 .hero h1 { margin: 0 0 8px; font-size: 34px; } .hero p { margin: 0 0 18px; opacity: .9; font-size: 17px; }
 main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -82,3 +82,9 @@ footer { text-align: center; color: var(--muted); padding: 24px; font-size: 14px
   .hide-sm { display: none; }
   .hero h1 { font-size: 26px; }
 }
+
+/* ---------- XCYZ wordmark ---------- */
+.wordmark { font-weight: 500; font-size: 18px; letter-spacing: -0.01em; color: #c9d3e3; }
+@media (max-width: 420px) { .wordmark span, .wordmark { font-size: 16px; } }
+.wordmark b { font-weight: 900; color: #fff; letter-spacing: 0.06em; margin-right: 2px; }
+.logo img { border-radius: 8px; }

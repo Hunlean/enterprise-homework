@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- Public API (used by the website) ----------
 app.get('/api/config', (req, res) => {
-  res.json({ shopName: process.env.SHOP_NAME || 'Mekong Phone Shop', telegramBot: telegram.getUsername() });
+  res.json({ shopName: process.env.SHOP_NAME || 'XCYZ Phone Shop', telegramBot: telegram.getUsername() });
 });
 
 app.get('/api/products', (req, res) => res.json(shop.listProducts()));
