@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="bar"><a class="logo" href="/">Admin · <span class="shop-name">Mekong Phone Shop</span></a><span class="spacer"></span><button class="btn btn-ghost" id="logout" style="display:none">Log out</button></div></header>
+<main>
+  <div class="panel" id="login">
+    <h2>Admin login</h2>
+    <form id="loginForm" style="display:flex;gap:8px"><input type="password" name="pw" placeholder="Admin password" required><button class="btn btn-primary">Log in</button></form>
+    <p class="error" id="loginErr"></p>
+  </div>
+  <div id="dash" style="display:none">
+    <div class="stats" id="stats"></div>
+    <p style="color:var(--muted)">All orders from the website and Telegram, newest first. Refreshes every 5 seconds. Changing a status sends a Telegram message to the customer if they ordered by Telegram or linked their order.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Order</th><th>Channel</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const money = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const STATUSES = ['pending', 'confirmed', 'packing', 'delivering', 'completed', 'cancelled'];
+let pw = sessionStorage.getItem('pw') || '';
+let timer;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-admin-password': pw, ...(opts.headers || {}) } });
+  if (r.status === 401) throw new Error('Wrong admin password');
+  return r.json();
+}
+
+async function refresh() {
+  const orders = await api('/api/admin/orders');
+  const revenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
+  const count = ch => orders.filter(o => o.channel === ch).length;
+  $('#stats').innerHTML = `
+    <div class="stat"><b>${orders.length}</b>Total orders</div>
+    <div class="stat"><b>${count('website')}</b>From website</div>
+    <div class="stat"><b>${count('telegram')}</b>From Telegram</div>
+    <div class="stat"><b>${orders.filter(o => o.status === 'pending').length}</b>Waiting to confirm</div>
+    <div class="stat"><b>${money(revenue)}</b>Revenue</div>`;
+  $('#rows').innerHTML = orders.map(o => `
+    <tr>
+      <td><b>${esc(o.id)}</b><br><small>${new Date(o.createdAt).toLocaleString()}</small></td>
+      <td><span class="badge ${o.channel}">${o.channel}</span>${o.telegramChatId ? '<br><small>✈️ Telegram linked</small>' : ''}</td>
+      <td>${esc(o.customer.name)}<br><small>${esc(o.customer.phone)}<br>${esc(o.customer.address)}${o.customer.note ? '<br>Note: ' + esc(o.customer.note) : ''}</small></td>
+      <td>${o.lines.map(l => `${l.qty} × ${esc(l.name)}`).join('<br>')}</td>
+      <td>${money(o.total)}<br><small>${o.payment === 'khqr' ? 'KHQR' : 'Cash'}</small></td>
+      <td><select data-id="${esc(o.id)}">${STATUSES.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+    </tr>`).join('') || '<tr><td colspan="6">No orders yet.</td></tr>';
+}
+
+$('#rows').addEventListener('change', async e => {
+  const id = e.target.dataset.id; if (!id) return;
+  await api('/api/admin/orders/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ status: e.target.value }) });
+  refresh();
+});
+
+async function enter() {
+  try {
+    await refresh();
+    sessionStorage.setItem('pw', pw);
+    $('#login').style.display = 'none'; $('#dash').style.display = 'block'; $('#logout').style.display = 'inline-flex';
+    clearInterval(timer); timer = setInterval(() => { if (document.activeElement.tagName !== 'SELECT') refresh(); }, 5000);
+  } catch (e) { $('#loginErr').textContent = e.message; }
+}
+$('#loginForm').onsubmit = e => { e.preventDefault(); pw = new FormData(e.target).get('pw'); enter(); };
+$('#logout').onclick = () => { sessionStorage.removeItem('pw'); location.reload(); };
+fetch('/api/config').then(r => r.json()).then(c => document.querySelectorAll('.shop-name').forEach(e => e.textContent = c.shopName));
+if (pw) enter();
+</script>
+</body>
+</html>

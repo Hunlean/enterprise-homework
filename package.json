@@ -1,0 +1,14 @@
+{
+  "name": "phone-shop-telegram",
+  "version": "1.0.0",
+  "description": "CS 491 Homework #1 - Ordering website connected to a Telegram bot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}

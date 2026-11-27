@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track Order</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="bar"><a class="logo shop-name" href="/">Mekong Phone Shop</a><span class="spacer"></span><a class="btn btn-ghost" href="/">Shop</a></div></header>
+<main>
+  <div class="panel">
+    <h2 id="title">Track your order</h2>
+    <form id="find" style="display:flex;gap:8px"><input name="id" placeholder="ORD-1001" required><button class="btn btn-primary">Find</button></form>
+    <div id="result"></div>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const money = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const FLOW = ['pending', 'confirmed', 'packing', 'delivering', 'completed'];
+const params = new URLSearchParams(location.search);
+let bot = null;
+
+async function load(id) {
+  const r = await fetch('/api/orders/' + encodeURIComponent(id));
+  if (!r.ok) { $('#result').innerHTML = '<p class="error">Order not found.</p>'; return; }
+  const o = await r.json();
+  $('#find').style.display = 'none';
+  $('#title').textContent = params.get('new') ? '🎉 Thank you! Order placed' : 'Order ' + o.id;
+  const step = FLOW.indexOf(o.status);
+  const tg = bot ? (o.telegramLinked
+      ? '<div class="tgbox">✅ Telegram updates are turned on for this order.</div>'
+      : `<div class="tgbox"><b>Get updates on Telegram</b><p>Tap the button, then press <b>Start</b>. The bot will message you when your order status changes.</p>
+         <a class="btn btn-tg" target="_blank" href="https://t.me/${bot}?start=${encodeURIComponent(o.id)}">✈️ Connect Telegram</a></div>`) : '';
+  $('#result').innerHTML = `
+    <p>Order number: <b>${esc(o.id)}</b> &nbsp; <span class="badge ${o.status}">${o.status}</span> &nbsp; <span class="badge ${o.channel}">via ${o.channel}</span></p>
+    ${o.status === 'cancelled' ? '' : `<div class="steps">${FLOW.map((s, i) => `<div class="${i <= step ? 'on' : ''}" title="${s}"></div>`).join('')}</div>`}
+    ${o.lines.map(l => `<div class="row"><span>${l.emoji} ${l.qty} × ${esc(l.name)}</span><span>${money(l.lineTotal)}</span></div>`).join('')}
+    <hr><div class="row"><span>Delivery</span><span>${o.deliveryFee ? money(o.deliveryFee) : 'FREE'}</span></div>
+    <div class="row total"><span>Total</span><span>${money(o.total)}</span></div>
+    <p>Deliver to: ${esc(o.customer.name)}, ${esc(o.customer.address)}<br>Payment: ${o.payment === 'khqr' ? 'ABA KHQR' : 'Cash on delivery'}</p>
+    ${tg}`;
+}
+
+$('#find').onsubmit = e => { e.preventDefault(); load(new FormData(e.target).get('id')); };
+fetch('/api/config').then(r => r.json()).then(c => {
+  bot = c.telegramBot;
+  document.querySelectorAll('.shop-name').forEach(e => e.textContent = c.shopName);
+  if (params.get('id')) load(params.get('id'));
+});
+</script>
+</body>
+</html>
