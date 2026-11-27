@@ -3,19 +3,27 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mekong Phone Shop</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header><div class="bar">
-  <a class="logo shop-name" href="/">Mekong Phone Shop</a><span class="spacer"></span>
-  <a class="btn btn-ghost" href="order.html">Track order</a>
-  <button class="btn btn-primary" id="cartBtn">🛒 Cart (<span id="cartCount">0</span>)</button>
+  <a class="logo" href="/"><img src="logo.svg" alt="" width="34" height="34"><span class="shop-name">Mekong Phone Shop</span></a><span class="spacer"></span>
+  <a class="btn btn-ghost" href="order.html"><span data-icon="package" data-size="18"></span><span class="hide-sm">Track order</span></a>
+  <button class="btn btn-primary" id="cartBtn"><span data-icon="cart" data-size="18"></span>Cart <span class="count" id="cartCount">0</span></button>
 </div></header>
 
 <section class="hero"><div class="inner">
   <h1>Original phones, delivered in Phnom Penh</h1>
   <p>Order here on the website, or chat with us on Telegram. No app needed. Free delivery over $100.</p>
-  <a class="btn btn-tg" id="tgHero" href="#" target="_blank" style="display:none">✈️ Order on Telegram</a>
+  <a class="btn btn-tg" id="tgHero" href="#" target="_blank" style="display:none"><span data-icon="send" data-size="18"></span>Order on Telegram</a>
+</div></section>
+
+<section class="trust"><div class="inner">
+  <div><span data-icon="truck" data-size="22"></span><b>Free delivery</b><small>On orders over $100</small></div>
+  <div><span data-icon="award" data-size="22"></span><b>100% original</b><small>1-year official warranty</small></div>
+  <div><span data-icon="qr" data-size="22"></span><b>Pay your way</b><small>Cash or ABA KHQR</small></div>
+  <div><span data-icon="send" data-size="22"></span><b>Telegram support</b><small>Order and track by chat</small></div>
 </div></section>
 
 <main>
@@ -25,12 +33,13 @@
 
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer">
-  <div class="head"><b id="drawerTitle">Your cart</b><span class="spacer"></span><button class="btn btn-ghost" id="closeDrawer">✕</button></div>
+  <div class="head"><b id="drawerTitle">Your cart</b><span class="spacer"></span><button class="btn btn-icon" id="closeDrawer" aria-label="Close"><span data-icon="x"></span></button></div>
   <div class="body" id="drawerBody"></div>
   <div class="foot" id="drawerFoot"></div>
 </aside>
 
 <footer>CS 491 Homework #1 demo · Website + Telegram ordering</footer>
+<script src="icons.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

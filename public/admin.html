@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shop Admin</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><div class="bar"><a class="logo" href="/">Admin · <span class="shop-name">Mekong Phone Shop</span></a><span class="spacer"></span><button class="btn btn-ghost" id="logout" style="display:none">Log out</button></div></header>
+<header><div class="bar"><a class="logo" href="/"><img src="logo.svg" alt="" width="34" height="34"><span><span class="shop-name">Mekong Phone Shop</span> <small class="tag">Admin</small></span></a><span class="spacer"></span><button class="btn btn-ghost" id="logout" style="display:none"><span data-icon="logout" data-size="18"></span>Log out</button></div></header>
 <main>
   <div class="panel" id="login">
     <h2>Admin login</h2>
@@ -22,6 +23,7 @@
     </table></div>
   </div>
 </main>
+<script src="icons.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const money = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -49,7 +51,7 @@ async function refresh() {
   $('#rows').innerHTML = orders.map(o => `
     <tr>
       <td><b>${esc(o.id)}</b><br><small>${new Date(o.createdAt).toLocaleString()}</small></td>
-      <td><span class="badge ${o.channel}">${o.channel}</span>${o.telegramChatId ? '<br><small>✈️ Telegram linked</small>' : ''}</td>
+      <td><span class="badge ${o.channel}">${o.channel}</span>${o.telegramChatId ? '<br><small class="linked">' + icon('send', 12) + ' Telegram linked</small>' : ''}</td>
       <td>${esc(o.customer.name)}<br><small>${esc(o.customer.phone)}<br>${esc(o.customer.address)}${o.customer.note ? '<br>Note: ' + esc(o.customer.note) : ''}</small></td>
       <td>${o.lines.map(l => `${l.qty} × ${esc(l.name)}`).join('<br>')}</td>
       <td>${money(o.total)}<br><small>${o.payment === 'khqr' ? 'KHQR' : 'Cash'}</small></td>
@@ -73,6 +75,7 @@ async function enter() {
 }
 $('#loginForm').onsubmit = e => { e.preventDefault(); pw = new FormData(e.target).get('pw'); enter(); };
 $('#logout').onclick = () => { sessionStorage.removeItem('pw'); location.reload(); };
+hydrateIcons();
 fetch('/api/config').then(r => r.json()).then(c => document.querySelectorAll('.shop-name').forEach(e => e.textContent = c.shopName));
 if (pw) enter();
 </script>

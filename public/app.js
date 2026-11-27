@@ -30,19 +30,20 @@ function renderGrid() {
   const shown = products.filter(p => filter === 'All' || p.category === filter || p.brand === filter);
   $('#grid').innerHTML = shown.map(p => `
     <div class="card">
-      <div class="pic">${p.emoji}</div>
+      <div class="pic" style="--tint:${productColor(p)}">${icon(productIcon(p), 64)}</div>
       <span class="brand">${esc(p.brand)}</span>
       <h3>${esc(p.name)}</h3>
       <p>${esc(p.description)}</p>
       <div class="row"><span class="price">${money(p.price)}</span>
-      <button class="btn btn-primary" data-add="${p.id}">Add</button></div>
+      <button class="btn btn-primary" data-add="${p.id}">${icon('plus', 16)}Add</button></div>
     </div>`).join('');
 }
 $('#grid').onclick = e => {
-  const id = Number(e.target.dataset.add); if (!id) return;
+  const btn = e.target.closest('[data-add]'); if (!btn) return;
+  const id = Number(btn.dataset.add);
   const line = cart.find(i => i.productId === id);
   line ? line.qty++ : cart.push({ productId: id, qty: 1 });
-  saveCart(); e.target.textContent = 'Added ✓'; setTimeout(() => e.target.textContent = 'Add', 800);
+  saveCart(); btn.innerHTML = icon('check', 16) + 'Added'; setTimeout(() => btn.innerHTML = icon('plus', 16) + 'Add', 900);
 };
 
 // ---------- Cart drawer ----------
@@ -63,18 +64,19 @@ function totalsHtml(q) {
 
 async function showCart() {
   $('#drawerTitle').textContent = 'Your cart';
-  if (cart.length === 0) { $('#drawerBody').innerHTML = '<p>Your cart is empty.</p>'; $('#drawerFoot').innerHTML = ''; return; }
+  if (cart.length === 0) { $('#drawerBody').innerHTML = `<div class="empty">${icon('cart', 48)}<p>Your cart is empty.</p></div>`; $('#drawerFoot').innerHTML = ''; return; }
   const q = await quote();
   $('#drawerBody').innerHTML = q.lines.map(l => `
-    <div class="line"><span>${l.emoji}</span><div class="name">${esc(l.name)}<br><small>${money(l.price)}</small></div>
-      <div class="qty"><button data-d="-1" data-id="${l.productId}">−</button><b>${l.qty}</b><button data-d="1" data-id="${l.productId}">+</button></div>
+    <div class="line"><span class="thumb" style="--tint:${productColor(products.find(p => p.id === l.productId) || {})}">${icon(productIcon(products.find(p => p.id === l.productId) || l), 22)}</span><div class="name">${esc(l.name)}<br><small>${money(l.price)}</small></div>
+      <div class="qty"><button data-d="-1" data-id="${l.productId}" aria-label="Less">${icon('minus', 14)}</button><b>${l.qty}</b><button data-d="1" data-id="${l.productId}" aria-label="More">${icon('plus', 14)}</button></div>
     </div>`).join('') + '<br>' + totalsHtml(q);
   $('#drawerFoot').innerHTML = '<button class="btn btn-primary" style="width:100%" id="toCheckout">Checkout</button>';
   $('#toCheckout').onclick = showCheckout;
 }
 $('#drawerBody').addEventListener('click', e => {
-  const id = Number(e.target.dataset.id); if (!id) return;
-  const line = cart.find(i => i.productId === id); line.qty += Number(e.target.dataset.d);
+  const b = e.target.closest('[data-id]'); if (!b) return;
+  const id = Number(b.dataset.id);
+  const line = cart.find(i => i.productId === id); line.qty += Number(b.dataset.d);
   cart = cart.filter(i => i.qty > 0); saveCart(); showCart();
 });
 
@@ -93,7 +95,7 @@ async function showCheckout() {
       <br><br>${totalsHtml(q)}
       <div class="error" id="err"></div>
     </form>`;
-  $('#drawerFoot').innerHTML = `<button class="btn btn-ghost" id="back">Back</button> <button class="btn btn-primary" id="place">Place order</button>`;
+  $('#drawerFoot').innerHTML = `<button class="btn btn-ghost" id="back">${icon('arrowLeft', 16)}Back</button> <button class="btn btn-primary" id="place">${icon('check', 16)}Place order</button>`;
   $('#back').onclick = showCart;
   $('#place').onclick = placeOrder;
 }
@@ -113,4 +115,5 @@ async function placeOrder() {
   location.href = `order.html?id=${encodeURIComponent(data.id)}&new=1`;
 }
 
+hydrateIcons();
 init();
