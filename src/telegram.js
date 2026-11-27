@@ -29,12 +29,31 @@ const MAIN_KEYBOARD = {
   resize_keyboard: true
 };
 
-async function call(method, body) {
-  const res = await fetch(`${API}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {})
-  });
+// Some home/school networks have flaky IPv6 to api.telegram.org, which makes Node's
+// fetch fail with "fetch failed". Prefer IPv4 and retry short network errors.
+require('dns').setDefaultResultOrder('ipv4first');
+
+async function call(method, body, attempt = 1) {
+  let res;
+  try {
+    res = await fetch(`${API}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(method === 'getUpdates' ? 40000 : 15000)
+    });
+  } catch (err) {
+    // Network problem (not a Telegram error): try again up to 3 times
+    const reason = err.cause?.code || err.cause?.message || err.name;
+    if (attempt < 3) {
+      console.warn(`[telegram] ${method} network error (${reason}), retrying...`);
+      await new Promise(r => setTimeout(r, 700 * attempt));
+      return call(method, body, attempt + 1);
+    }
+    const e = new Error(`Network error talking to Telegram (${reason})`);
+    e.network = true;
+    throw e;
+  }
   const json = await res.json();
   if (!json.ok) throw new Error(`Telegram ${method} failed: ${json.description}`);
   return json.result;
@@ -111,25 +130,30 @@ async function handleCheckoutStep(chatId, msg) {
   if (s.step === 'name') {
     if (!text) return send(chatId, 'Please type your name.');
     s.draft.name = text;
-    s.step = 'phone';
-    return send(chatId, '2/3 Your phone number? Tap the button to share it, or type it.', {
+    // Move to the next step only after the question was delivered,
+    // so a network error never leaves the customer on a step they didn't see.
+    await send(chatId, '2/3 Your phone number? Tap the button to share it, or type it.', {
       reply_markup: { keyboard: [[{ text: '📱 Share my phone number', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true }
     });
+    s.step = 'phone';
+    return;
   }
   if (s.step === 'phone') {
     const phone = msg.contact ? msg.contact.phone_number : text;
     if (!/^[0-9+\-\s]{6,20}$/.test(phone || '')) return send(chatId, 'That does not look like a phone number. Please try again.');
     s.draft.phone = phone;
+    await send(chatId, '3/3 Delivery address?', { reply_markup: { remove_keyboard: true } });
     s.step = 'address';
-    return send(chatId, '3/3 Delivery address?', { reply_markup: { remove_keyboard: true } });
+    return;
   }
   if (s.step === 'address') {
     if (!text) return send(chatId, 'Please type your delivery address.');
     s.draft.address = text;
-    s.step = 'payment';
-    return send(chatId, 'How would you like to pay?', {
+    await send(chatId, 'How would you like to pay?', {
       reply_markup: { inline_keyboard: [[{ text: '💵 Cash on delivery', callback_data: 'pay:cash' }, { text: '📲 ABA KHQR', callback_data: 'pay:khqr' }]] }
     });
+    s.step = 'payment';
+    return;
   }
   return send(chatId, 'Please choose one of the buttons above, or type "cancel".');
 }
@@ -243,7 +267,10 @@ async function handleUpdate(update) {
   } catch (err) {
     console.error('[telegram] error handling update:', err.message);
     const chatId = update.message?.chat.id || update.callback_query?.message.chat.id;
-    if (chatId) send(chatId, '⚠️ ' + err.message).catch(() => {});
+    const text = err.network
+      ? '⚠️ Connection problem, please send your last message again.'
+      : '⚠️ ' + err.message;
+    if (chatId) send(chatId, text).catch(() => {});
   }
 }
 

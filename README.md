@@ -90,6 +90,11 @@ The shop staff use one **admin page** to see every order (from both channels) an
 5. **Notifications:** change a Telegram order's status to `packing`. The customer's Telegram gets a message right away.
 6. **Link a website order:** on a website order's tracking page, tap **Connect Telegram**, press Start. Now that order also gets Telegram updates.
 
+## Troubleshooting
+
+- **The bot replies "Connection problem" or the terminal shows `network error ... retrying`:** your internet to Telegram dropped for a moment. The bot retries 3 times by itself; if it still fails, just send the message again. If it happens a lot, try another Wi-Fi or a phone hotspot.
+- **No Shop button in Telegram:** `SITE_URL` in `.env` must be your current `https://` ngrok link, then restart the server.
+
 ## Project structure
 
 ```
