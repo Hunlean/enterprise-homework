@@ -14,6 +14,7 @@
     <div id="result"></div>
   </div>
 </main>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="icons.js"></script>
 <script>
 const $ = s => document.querySelector(s);
@@ -22,6 +23,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const FLOW = ['pending', 'confirmed', 'packing', 'delivering', 'completed'];
 const params = new URLSearchParams(location.search);
 let bot = null;
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#0b0b0f'); } catch {} tg.BackButton.show(); tg.BackButton.onClick(() => location.href = '/'); }
 
 async function load(id) {
   const r = await fetch('/api/orders/' + encodeURIComponent(id));
@@ -30,18 +33,18 @@ async function load(id) {
   $('#find').style.display = 'none';
   $('#title').textContent = params.get('new') ? 'Thank you! Your order is placed' : 'Order ' + o.id;
   const step = FLOW.indexOf(o.status);
-  const tg = bot ? (o.telegramLinked
+  const tgBox = tg ? `<div class="tgbox">${icon('checkCircle', 18)} A confirmation was sent to your Telegram chat. <br><br><button class="btn btn-tg" onclick="Telegram.WebApp.close()">${icon('send', 18)}Back to chat</button></div>` : bot ? (o.telegramLinked
       ? `<div class="tgbox">${icon('checkCircle', 18)} Telegram updates are turned on for this order.</div>`
       : `<div class="tgbox"><b>Get updates on Telegram</b><p>Tap the button, then press <b>Start</b>. The bot will message you when your order status changes.</p>
          <a class="btn btn-tg" target="_blank" href="https://t.me/${bot}?start=${encodeURIComponent(o.id)}">${icon('send', 18)}Connect Telegram</a></div>`) : '';
   $('#result').innerHTML = `
-    <p>Order number: <b>${esc(o.id)}</b> &nbsp; <span class="badge ${o.status}">${o.status}</span> &nbsp; <span class="badge ${o.channel}">via ${o.channel}</span></p>
+    <p>Order number: <b>${esc(o.id)}</b> &nbsp; <span class="badge ${o.status}">${o.status}</span> &nbsp; <span class="badge ${o.channel}">via ${o.channel === 'mini-app' ? 'Telegram Mini App' : o.channel}</span></p>
     ${o.status === 'cancelled' ? '' : `<div class="steps">${FLOW.map((s, i) => `<div class="${i <= step ? 'on' : ''}" title="${s}"></div>`).join('')}</div>`}
     ${o.lines.map(l => `<div class="row"><span>${l.qty} × ${esc(l.name)}</span><span>${money(l.lineTotal)}</span></div>`).join('')}
     <hr><div class="row"><span>Delivery</span><span>${o.deliveryFee ? money(o.deliveryFee) : 'FREE'}</span></div>
     <div class="row total"><span>Total</span><span>${money(o.total)}</span></div>
     <p>Deliver to: ${esc(o.customer.name)}, ${esc(o.customer.address)}<br>Payment: ${o.payment === 'khqr' ? 'ABA KHQR' : 'Cash on delivery'}</p>
-    ${tg}`;
+    ${tgBox}`;
 }
 
 hydrateIcons();

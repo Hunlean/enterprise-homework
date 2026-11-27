@@ -15,7 +15,7 @@
   </div>
   <div id="dash" style="display:none">
     <div class="stats" id="stats"></div>
-    <p style="color:var(--muted)">All orders from the website and Telegram, newest first. Refreshes every 5 seconds. Changing a status sends a Telegram message to the customer if they ordered by Telegram or linked their order.</p>
+    <p style="color:var(--muted)">All orders from the website, the Telegram chat bot and the Telegram Mini App, newest first. Refreshes every 5 seconds. Changing a status sends a Telegram message to the customer if they ordered by Telegram or linked their order.</p>
     <div class="tablewrap"><table>
       <thead><tr><th>Order</th><th>Channel</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
       <tbody id="rows"></tbody>
@@ -44,13 +44,14 @@ async function refresh() {
   $('#stats').innerHTML = `
     <div class="stat"><b>${orders.length}</b>Total orders</div>
     <div class="stat"><b>${count('website')}</b>From website</div>
-    <div class="stat"><b>${count('telegram')}</b>From Telegram</div>
+    <div class="stat"><b>${count('telegram')}</b>Telegram chat bot</div>
+    <div class="stat"><b>${count('mini-app')}</b>Telegram Mini App</div>
     <div class="stat"><b>${orders.filter(o => o.status === 'pending').length}</b>Waiting to confirm</div>
     <div class="stat"><b>${money(revenue)}</b>Revenue</div>`;
   $('#rows').innerHTML = orders.map(o => `
     <tr>
       <td><b>${esc(o.id)}</b><br><small>${new Date(o.createdAt).toLocaleString()}</small></td>
-      <td><span class="badge ${o.channel}">${o.channel}</span>${o.telegramChatId ? '<br><small class="linked">' + icon('send', 12) + ' Telegram linked</small>' : ''}</td>
+      <td><span class="badge ${o.channel}">${o.channel === 'mini-app' ? 'mini app' : o.channel}</span>${o.telegramChatId ? '<br><small class="linked">' + icon('send', 12) + ' Telegram linked</small>' : ''}</td>
       <td>${esc(o.customer.name)}<br><small>${esc(o.customer.phone)}<br>${esc(o.customer.address)}${o.customer.note ? '<br>Note: ' + esc(o.customer.note) : ''}</small></td>
       <td>${o.lines.map(l => `${l.qty} × ${esc(l.name)}`).join('<br>')}</td>
       <td>${money(o.total)}<br><small>${o.payment === 'khqr' ? 'KHQR' : 'Cash'}</small></td>

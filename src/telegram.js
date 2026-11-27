@@ -1,12 +1,18 @@
-// Telegram bot: lets customers order by chatting, without a mobile app.
-// It uses "long polling" (the server keeps asking Telegram "any new messages?"),
-// so it works on your laptop without a public URL or HTTPS.
+// Telegram integration. Customers can order in TWO ways inside Telegram:
+//  1. Chat bot: menus, buttons and a checkout conversation.
+//  2. Mini App: the shop website opens INSIDE Telegram (needs an https SITE_URL).
+// The bot uses "long polling" (the server keeps asking Telegram "any new messages?"),
+// so the chat bot works on your laptop without a public URL.
+const crypto = require('crypto');
 const shop = require('./shop');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const API = `https://api.telegram.org/bot${TOKEN}`;
 const SHOP = process.env.SHOP_NAME || 'XCYZ Phone Shop';
 const SITE = process.env.SITE_URL || 'http://localhost:3000';
+
+// Mini Apps must be served over HTTPS (e.g. an ngrok URL), so only enable them then
+const MINI_APP = SITE.startsWith('https://');
 
 let botUsername = null;
 let running = false;
@@ -36,6 +42,11 @@ async function call(method, body) {
 
 function send(chatId, text, extra = {}) {
   return call('sendMessage', { chat_id: chatId, text, ...extra });
+}
+
+// Inline button that opens the website as a Mini App inside Telegram
+function openShopButton(path = '/') {
+  return { text: '🛍 Open shop', web_app: { url: SITE + path } };
 }
 
 // ---------- Screens ----------
@@ -160,7 +171,9 @@ async function handleMessage(msg) {
       const order = shop.linkTelegram(start[1], chatId);
       if (order) return send(chatId, `✅ Telegram linked to your order. You will get updates here.\n\n${shop.orderSummary(order)}`, { reply_markup: MAIN_KEYBOARD });
     }
-    return send(chatId, `Welcome to ${SHOP}, ${msg.from.first_name || 'friend'}! 📱\nOrder here in Telegram, no app needed.\n\nTap 🛍 Products to begin.`, { reply_markup: MAIN_KEYBOARD });
+    await send(chatId, `Welcome to ${SHOP}, ${msg.from.first_name || 'friend'}! 📱\nOrder here in Telegram, no app needed.\n\nTap 🛍 Products to order by chat.`, { reply_markup: MAIN_KEYBOARD });
+    if (MINI_APP) return send(chatId, 'Or browse our full shop without leaving Telegram 👇', { reply_markup: { inline_keyboard: [[openShopButton()]] } });
+    return;
   }
 
   if (s.step && s.step !== 'payment' && s.step !== 'confirm') return handleCheckoutStep(chatId, msg);
@@ -169,7 +182,10 @@ async function handleMessage(msg) {
   if (/menu|product/i.test(text)) { const m = menuMessage(); return send(chatId, m.text, { reply_markup: m.reply_markup }); }
   if (/cart/i.test(text)) { const m = cartMessage(chatId); return send(chatId, m.text, { reply_markup: m.reply_markup }); }
   if (/order/i.test(text) && !/^\/track/i.test(text)) return send(chatId, myOrders(chatId));
-  if (/website/i.test(text)) return send(chatId, `Visit our website: ${SITE}`);
+  if (/website/i.test(text)) {
+    if (MINI_APP) return send(chatId, 'Open our shop right here in Telegram:', { reply_markup: { inline_keyboard: [[openShopButton()]] } });
+    return send(chatId, `Visit our website: ${SITE}`);
+  }
   const track = text.match(/^\/track\s+(\S+)/i);
   if (track) {
     const o = shop.getOrder(track[1]);
@@ -261,12 +277,42 @@ async function start() {
       { command: 'start', description: 'Start / main menu' },
       { command: 'track', description: 'Track an order, e.g. /track ORD-1001' }
     ] });
+    // The "menu" button next to the message box opens the Mini App
+    await call('setChatMenuButton', { menu_button: MINI_APP
+      ? { type: 'web_app', text: 'Shop', web_app: { url: SITE } }
+      : { type: 'commands' } });
+    if (!MINI_APP) console.log('[telegram] Mini App is off: set SITE_URL to an https address (e.g. ngrok) to turn it on.');
     running = true;
     console.log(`[telegram] Bot @${botUsername} is running. Open https://t.me/${botUsername}`);
     poll();
   } catch (err) {
     console.error('[telegram] could not start bot:', err.message);
   }
+}
+
+// ---------- Mini App security ----------
+// The Mini App sends Telegram's "initData" string with each order. Telegram signs it
+// with our bot token, so we can prove which Telegram user placed the order.
+// https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+function verifyInitData(initData, maxAgeSeconds = 24 * 3600) {
+  if (!TOKEN || !initData) return null;
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  if (!hash) return null;
+  params.delete('hash');
+  const dataCheckString = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('\n');
+  const secret = crypto.createHmac('sha256', 'WebAppData').update(TOKEN).digest();
+  const expected = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+  if (expected.length !== hash.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hash))) return null;
+  if (Date.now() / 1000 - Number(params.get('auth_date')) > maxAgeSeconds) return null;
+  try { return JSON.parse(params.get('user')); } catch { return null; }
+}
+
+// Confirmation message in the chat after ordering in the Mini App
+async function notifyNewOrder(order) {
+  if (!running || !order.telegramChatId) return;
+  await send(order.telegramChatId, `🎉 Thank you! We received your order.\n\n${shop.orderSummary(order)}\n\nWe will message you here when the status changes.`)
+    .catch(e => console.error('[telegram] notify failed:', e.message));
 }
 
 // Called by the admin page when an order status changes
@@ -276,4 +322,4 @@ async function notifyStatus(order) {
   await send(order.telegramChatId, `Update for ${order.id}: ${labels[order.status] || order.status}`).catch(e => console.error('[telegram] notify failed:', e.message));
 }
 
-module.exports = { start, notifyStatus, handleUpdate, getUsername: () => botUsername };
+module.exports = { start, notifyStatus, notifyNewOrder, verifyInitData, handleUpdate, getUsername: () => botUsername };

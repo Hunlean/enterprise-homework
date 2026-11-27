@@ -38,7 +38,8 @@ function clean(s, max = 200) {
   return String(s || '').trim().slice(0, max);
 }
 
-// customer: { name, phone, address, note }, channel: 'website' | 'telegram'
+// customer: { name, phone, address, note }
+// channel: 'website' | 'telegram' (chat bot) | 'mini-app' (website opened inside Telegram)
 function createOrder({ items, customer, channel, payment, telegramChatId }) {
   const c = { name: clean(customer?.name, 80), phone: clean(customer?.phone, 30), address: clean(customer?.address, 300), note: clean(customer?.note, 300) };
   if (!c.name) throw new Error('Name is required');

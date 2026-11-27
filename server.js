@@ -27,7 +27,16 @@ app.post('/api/quote', (req, res) => {
 
 app.post('/api/orders', (req, res) => {
   try {
-    const order = shop.createOrder({ items: req.body.items, customer: req.body.customer, payment: req.body.payment, channel: 'website' });
+    // If the page runs as a Telegram Mini App, it sends Telegram's signed initData.
+    // We verify the signature, then link the order to that Telegram user.
+    const tgUser = req.body.tgInitData ? telegram.verifyInitData(req.body.tgInitData) : null;
+    if (req.body.tgInitData && !tgUser) return res.status(401).json({ error: 'Telegram login could not be verified. Please reopen the shop from the bot.' });
+    const order = shop.createOrder({
+      items: req.body.items, customer: req.body.customer, payment: req.body.payment,
+      channel: tgUser ? 'mini-app' : 'website',
+      telegramChatId: tgUser ? tgUser.id : null // in a private chat, chat id = user id
+    });
+    if (tgUser) telegram.notifyNewOrder(order);
     res.status(201).json(order);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

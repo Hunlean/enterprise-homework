@@ -3,19 +3,41 @@ const $ = s => document.querySelector(s);
 const money = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// When this page is opened as a Telegram Mini App, Telegram gives us window.Telegram.WebApp
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+
 let products = [];
 let filter = 'All';
 let cart = loadCart(); // [{ productId, qty }]
 
 function loadCart() { try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; } }
 function saveCart() { try { localStorage.setItem('cart', JSON.stringify(cart)); } catch {} renderCount(); }
-function renderCount() { $('#cartCount').textContent = cart.reduce((s, i) => s + i.qty, 0); }
+function renderCount() {
+  const n = cart.reduce((s, i) => s + i.qty, 0);
+  $('#cartCount').textContent = n;
+  // Inside Telegram: show Telegram's own big bottom button for the cart
+  if (tg) {
+    if (n > 0 && !$('#drawer').classList.contains('open')) { tg.MainButton.setText(`View cart (${n})`); tg.MainButton.show(); }
+    else tg.MainButton.hide();
+  }
+}
+
+function setupTelegram() {
+  if (!tg) return;
+  tg.ready();
+  tg.expand();
+  document.body.classList.add('in-telegram');
+  try { tg.setHeaderColor('#0b0b0f'); } catch {}
+  tg.MainButton.color = '#0f62fe';
+  tg.MainButton.onClick(openDrawer);
+  tg.BackButton.onClick(closeDrawer);
+}
 
 async function init() {
   const [config, list] = await Promise.all([fetch('/api/config').then(r => r.json()), fetch('/api/products').then(r => r.json())]);
   document.querySelectorAll('.shop-name').forEach(e => e.textContent = config.shopName);
   document.title = config.shopName;
-  if (config.telegramBot) { const a = $('#tgHero'); a.href = `https://t.me/${config.telegramBot}`; a.style.display = 'inline-flex'; }
+  if (config.telegramBot && !tg) { const a = $('#tgHero'); a.href = `https://t.me/${config.telegramBot}`; a.style.display = 'inline-flex'; }
   products = list;
   renderFilters(); renderGrid(); renderCount();
 }
@@ -47,8 +69,14 @@ $('#grid').onclick = e => {
 };
 
 // ---------- Cart drawer ----------
-function openDrawer() { $('#drawer').classList.add('open'); $('#overlay').classList.add('open'); showCart(); }
-function closeDrawer() { $('#drawer').classList.remove('open'); $('#overlay').classList.remove('open'); }
+function openDrawer() {
+  $('#drawer').classList.add('open'); $('#overlay').classList.add('open'); showCart();
+  if (tg) { tg.MainButton.hide(); tg.BackButton.show(); }
+}
+function closeDrawer() {
+  $('#drawer').classList.remove('open'); $('#overlay').classList.remove('open');
+  if (tg) { tg.BackButton.hide(); renderCount(); }
+}
 $('#cartBtn').onclick = openDrawer; $('#closeDrawer').onclick = closeDrawer; $('#overlay').onclick = closeDrawer;
 
 async function quote() {
@@ -90,6 +118,7 @@ async function showCheckout() {
       <label>Phone number</label><input name="phone" required placeholder="012 345 678" pattern="[0-9+\\-\\s]{6,20}">
       <label>Delivery address</label><textarea name="address" required rows="2"></textarea>
       <label>Note (optional)</label><input name="note" placeholder="e.g. color: black">
+      ${tg ? `<p class="tgnote">${icon('send', 14)} Ordering as <b>${esc(tg.initDataUnsafe.user?.first_name || 'Telegram user')}</b>. We will send updates to your Telegram.</p>` : ''}
       <label>Payment</label>
       <select name="payment"><option value="cash">Cash on delivery</option><option value="khqr">ABA KHQR</option></select>
       <br><br>${totalsHtml(q)}
@@ -97,6 +126,11 @@ async function showCheckout() {
     </form>`;
   $('#drawerFoot').innerHTML = `<button class="btn btn-ghost" id="back">${icon('arrowLeft', 16)}Back</button> <button class="btn btn-primary" id="place">${icon('check', 16)}Place order</button>`;
   $('#back').onclick = showCart;
+  // Prefill the name from the Telegram profile
+  if (tg && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    $('[name=name]').value = [u.first_name, u.last_name].filter(Boolean).join(' ');
+  }
   $('#place').onclick = placeOrder;
 }
 
@@ -107,13 +141,19 @@ async function placeOrder() {
   $('#place').disabled = true;
   const r = await fetch('/api/orders', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items: cart, payment: f.payment, customer: { name: f.name, phone: f.phone, address: f.address, note: f.note } })
+    body: JSON.stringify({
+      items: cart, payment: f.payment,
+      customer: { name: f.name, phone: f.phone, address: f.address, note: f.note },
+      tgInitData: tg ? tg.initData : undefined // signed by Telegram, checked on the server
+    })
   });
   const data = await r.json();
   if (!r.ok) { $('#err').textContent = data.error; $('#place').disabled = false; return; }
   cart = []; saveCart();
+  if (tg) tg.HapticFeedback.notificationOccurred('success');
   location.href = `order.html?id=${encodeURIComponent(data.id)}&new=1`;
 }
 
 hydrateIcons();
+setupTelegram();
 init();
