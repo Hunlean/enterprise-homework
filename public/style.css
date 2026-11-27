@@ -84,7 +84,7 @@ footer { text-align: center; color: var(--muted); padding: 24px; font-size: 14px
 }
 
 /* ---------- XCYZ wordmark ---------- */
-.wordmark { font-weight: 500; font-size: 18px; letter-spacing: -0.01em; color: #c9d3e3; }
+.wordmark { font-weight: 500; font-size: 20px; letter-spacing: -0.01em; color: #c9d3e3; }
 @media (max-width: 420px) { .wordmark span, .wordmark { font-size: 16px; } }
 .wordmark b { font-weight: 900; color: #fff; letter-spacing: 0.06em; margin-right: 2px; }
 .logo img { border-radius: 8px; }

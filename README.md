@@ -1,5 +1,3 @@
-<img src="public/favicon.svg" width="64" alt="XCYZ logo">
-
 # XCYZ Phone Shop: Website + Telegram Ordering
 
 CS 491 Enterprise Application Development, Homework #1.
@@ -25,7 +23,7 @@ The shop staff use one **admin page** to see every order (from both channels) an
 - Order tracking page with a progress bar
 - Telegram bot: product list, add/remove items, cart, 3-step checkout, share phone number with one tap, payment choice, order confirmation, "My orders", `/track ORD-1001`
 - Website orders can be linked to Telegram with a "Connect Telegram" button, so web customers get updates too
-- Professional branding: minimal bold "X" lettermark logo, favicon and a consistent SVG icon set (`public/icons.js`), with each product tinted in its brand color
+- Professional branding: bold minimal "XCYZ" text logo and a consistent SVG icon set (`public/icons.js`), with each product tinted in its brand color
 - Admin dashboard: all orders, channel, customer, items, totals, status changes, live stats
 - Status updates pushed to the customer on Telegram
 
@@ -54,7 +52,7 @@ The shop staff use one **admin page** to see every order (from both channels) an
       ```
       TELEGRAM_BOT_TOKEN=123456789:AAH...
       ```
-   4. Optional: give the bot the shop logo. Send `/setuserpic` to BotFather, pick your bot, and upload `docs/bot-avatar.png`.
+   4. Optional: give the bot a profile picture. Send `/setuserpic` to BotFather, pick your bot, and upload `docs/bot-avatar.png`.
 5. Start the server:
    ```bash
    npm start
@@ -84,7 +82,6 @@ public/order.html    Order tracking page
 public/admin.html    Admin dashboard
 public/style.css     Styles
 public/icons.js      SVG icon set
-public/logo.svg      Shop logo (also favicon.svg; docs/bot-avatar.png for Telegram)
 ```
 
 See [HOW-IT-WORKS.md](HOW-IT-WORKS.md) for an explanation of the design.
